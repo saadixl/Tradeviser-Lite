@@ -262,30 +262,8 @@
   color: var(--text-primary);
 }
 
-.playground-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: rgba(139, 92, 246, 0.12);
-  border: 1px solid rgba(139, 92, 246, 0.22);
-  border-radius: 999px;
-}
 
-.playground-badge--muted {
-  background: var(--bg-primary);
-  border-color: var(--border-subtle);
-  color: var(--text-muted);
-}
 
-.playground-badge-icon {
-  width: 0.85rem;
-  height: 0.85rem;
-  opacity: 0.9;
-}
 
 .playground-form {
   display: grid;
@@ -393,19 +371,7 @@
   cursor: not-allowed;
 }
 
-.playground-combo-suffix {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  color: var(--text-muted);
-  opacity: 0.55;
-  pointer-events: none;
-}
 
-.playground-combo-suffix svg {
-  width: 1rem;
-  height: 1rem;
-}
 
 .playground-select-wrap {
   position: relative;

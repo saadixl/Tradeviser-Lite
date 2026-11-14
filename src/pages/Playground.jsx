@@ -3,12 +3,10 @@ import {
   HiOutlineLightningBolt,
   HiOutlineSearch,
   HiOutlineChevronDown,
-  HiOutlineCollection,
   HiOutlineKey,
 } from 'react-icons/hi';
 import ScrollToTop from '../components/ScrollToTop';
 import { PROVIDERS, PROVIDER_MASSIVE, loadApiKey, saveApiKey } from '../data/providers';
-import POPULAR_TICKERS from '../data/popularTickers';
 import { parseTickerFromInput, runPlaygroundAnalysis } from '../utils/playgroundSignals';
 
 const PLAYGROUND_COLUMNS = [
@@ -73,8 +71,6 @@ function healthKeyForColumn(colKey) {
 }
 
 function Playground() {
-  const tickerOptions = POPULAR_TICKERS;
-
   const [tickerInput, setTickerInput] = useState('');
   const [apiProvider, setApiProvider] = useState(PROVIDER_MASSIVE);
   const [apiKey, setApiKey] = useState(() => loadApiKey(PROVIDER_MASSIVE));
@@ -82,8 +78,6 @@ function Playground() {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [analysisError, setAnalysisError] = useState(null);
-
-  const datalistId = 'playground-ticker-suggestions';
 
   const changeProvider = (value) => {
     setApiProvider(value);
@@ -130,8 +124,6 @@ function Playground() {
     return 'playground-signal playground-signal--hold';
   }, [result]);
 
-  const suggestionCount = tickerOptions.length;
-
   return (
     <div className="analysis-page-wrap">
       <ScrollToTop />
@@ -151,10 +143,6 @@ function Playground() {
         <section className="playground-panel" onKeyDown={onFormKeyDown}>
           <div className="playground-panel-head">
             <h2 className="playground-panel-title">Run analysis</h2>
-            <span className="playground-badge" title="Popular tickers to pick from">
-              <HiOutlineCollection className="playground-badge-icon" aria-hidden />
-              {suggestionCount} suggestions
-            </span>
           </div>
 
           <div className="playground-form">
@@ -168,27 +156,16 @@ function Playground() {
                   id="playground-ticker-input"
                   type="text"
                   className="playground-combo-input"
-                  list={datalistId}
                   value={tickerInput}
                   onChange={(e) => setTickerInput(e.target.value)}
-                  placeholder="Type symbol or pick from list"
+                  placeholder="Type a symbol, e.g. AAPL"
                   autoComplete="off"
                   spellCheck="false"
                   aria-describedby="playground-ticker-hint"
                 />
-                <span className="playground-combo-suffix" aria-hidden>
-                  <HiOutlineChevronDown />
-                </span>
-                <datalist id={datalistId}>
-                  {tickerOptions.map(({ ticker, name }) => (
-                    <option key={ticker} value={ticker}>
-                      {name || ticker}
-                    </option>
-                  ))}
-                </datalist>
               </div>
               <p id="playground-ticker-hint" className="playground-field-hint">
-                US equities. Pick a popular ticker or type any symbol.
+                US equities. Enter any ticker symbol.
               </p>
             </div>
 
