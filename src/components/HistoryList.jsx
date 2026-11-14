@@ -3,7 +3,7 @@ import { HiOutlineX, HiOutlineClock } from 'react-icons/hi';
 import { signalTone, timeAgo } from '../utils/format';
 
 /** Recently analyzed tickers. Selecting one reopens its cached result instantly. */
-function HistoryList({ entries, activeId, providerLabel, onSelect, onRemove, onClear }) {
+function HistoryList({ entries, activeId, providerLabel, onSelect, onRemove, onClear, readOnly }) {
   const [confirming, setConfirming] = useState(false);
   const [, setNow] = useState(Date.now());
 
@@ -22,11 +22,11 @@ function HistoryList({ entries, activeId, providerLabel, onSelect, onRemove, onC
   return (
     <aside className="card history" aria-labelledby="history-title">
       <div className="history-head">
-        <h2 id="history-title" className="history-title">
+        <h2 id="history-title" className="history-title" title={readOnly ? 'Latest 20 analyses from everyone' : undefined}>
           <HiOutlineClock aria-hidden="true" /> Recent
           {entries.length > 0 && <span className="history-count">{entries.length}</span>}
         </h2>
-        {entries.length > 0 && (
+        {!readOnly && entries.length > 0 && (
           <button
             type="button"
             className={`btn btn-ghost btn-xs${confirming ? ' is-danger' : ''}`}
@@ -46,8 +46,9 @@ function HistoryList({ entries, activeId, providerLabel, onSelect, onRemove, onC
 
       {entries.length === 0 ? (
         <p className="history-empty">
-          Tickers you analyze appear here with their results, saved in this browser so you can reopen them
-          instantly.
+          {readOnly
+            ? 'The latest analyses from everyone appear here. Open one to see its result instantly.'
+            : 'Tickers you analyze appear here with their results, saved in this browser so you can reopen them instantly.'}
         </p>
       ) : (
         <ul className="history-list">
@@ -58,7 +59,7 @@ function HistoryList({ entries, activeId, providerLabel, onSelect, onRemove, onC
               <li key={e.id} className="history-item-wrap" style={{ '--i': Math.min(idx, 12) }}>
                 <button
                   type="button"
-                  className={`history-item${e.id === activeId ? ' is-active' : ''}`}
+                  className={`history-item${e.id === activeId ? ' is-active' : ''}${readOnly ? ' is-readonly' : ''}`}
                   onClick={() => onSelect(e)}
                   aria-current={e.id === activeId ? 'true' : undefined}
                 >
@@ -74,6 +75,7 @@ function HistoryList({ entries, activeId, providerLabel, onSelect, onRemove, onC
                     </span>
                   </span>
                 </button>
+                {!readOnly && (
                 <button
                   type="button"
                   className="history-remove"
@@ -83,6 +85,7 @@ function HistoryList({ entries, activeId, providerLabel, onSelect, onRemove, onC
                 >
                   <HiOutlineX aria-hidden="true" />
                 </button>
+                )}
               </li>
             );
           })}

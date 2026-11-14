@@ -13,8 +13,11 @@ key for [Massive](https://massive.com) or [Alpha Vantage](https://www.alphavanta
   fundamentals, analyst targets, news sentiment) while the analysis runs.
 - **Readable results:** metrics grouped into technicals, price levels and fundamentals, each marked
   positive, neutral or negative, with RSI zones and the price's place in its 20-day range.
-- **Recent analyses:** every result is cached in your browser. Reopen any past ticker instantly,
-  re-run it for fresh data, or remove it. On phones the list becomes a swipeable strip.
+- **Shared results:** analyses are shared through a Firebase Realtime Database. If anyone analyzed a
+  ticker in the last 30 minutes, you get that result instantly, without an API key.
+- **Recent analyses:** the 20 latest analyses from everyone, live. Open any of them instantly. (Without
+  a database configured, the list is this browser's own history instead.) On phones the list
+  becomes a swipeable strip.
 - **Keyboard friendly:** press `/` to jump to the search, Enter to analyze, Esc to clear.
 
 ## What it looks at
@@ -54,6 +57,48 @@ the code or the build, so the app is safe to host publicly.
   [alphavantage.co](https://www.alphavantage.co/support/#api-key). The free tier has a low daily
   request limit, and one analysis makes about 6 requests.
 
+## Shared analysis cache (optional)
+
+With a Firebase Realtime Database configured, every analysis is saved at
+`Tradeviser-Lite/Analysis/<ticker>` (a `.` in a ticker is stored as `-`) with the server's
+timestamp. Before analyzing, the app checks that entry and reuses it if it's 30 minutes old or
+less; otherwise it runs a fresh analysis and saves it. The Recent list shows the 20 latest
+entries.
+
+To enable it, copy `.env.example` to `.env.local` and fill in your Firebase web app config, then
+add rules like these to your database. They allow public reads, and public writes only of
+well-formed analyses: no deletes, server timestamps only, and each ticker refreshable once its
+result is 30 minutes old.
+
+```json
+"Tradeviser-Lite": {
+  ".read": true,
+  "Analysis": {
+    ".indexOn": ["analyzedAt"],
+    "$ticker": {
+      ".write": "newData.exists() && (!data.exists() || now >= data.child('analyzedAt').val() + 1800000)",
+      ".validate": "$ticker.matches(/^[A-Z0-9-]{1,12}$/) && newData.hasChildren(['ticker', 'provider', 'analyzedAt', 'result'])",
+      "ticker": { ".validate": "newData.isString() && newData.val().matches(/^[A-Z0-9.]{1,12}$/)" },
+      "provider": { ".validate": "newData.val() === 'massive' || newData.val() === 'alphavantage'" },
+      "analyzedAt": { ".validate": "newData.val() === now" },
+      "result": {
+        ".validate": "newData.hasChildren(['Ticker', 'Score', 'Signal'])",
+        "Score": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
+        "Signal": { ".validate": "newData.isString() && newData.val().matches(/^(STRONG BUY|BUY|HOLD|SELL|STRONG SELL)$/)" },
+        "CompanyName": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "$field": { ".validate": "$field.matches(/^[A-Za-z0-9]{1,30}$/) && (newData.isNumber() || newData.isBoolean() || (newData.isString() && newData.val().length <= 40))" }
+      },
+      "$other": { ".validate": false }
+    }
+  },
+  "$other": { ".validate": false }
+}
+```
+
+Because writes are public, anyone could save a made-up result for a ticker; the rules limit the
+shape and frequency of writes, not their truth. Without the database settings the app works the
+same, keeping its history in the browser.
+
 ## Run it locally
 
 Requires Node.js 20 or later.
@@ -80,4 +125,4 @@ npm run deploy     # build + firebase deploy --only hosting
 
 ## Built with
 
-[React](https://react.dev), [Vite](https://vite.dev) and [React Icons](https://react-icons.github.io/react-icons/).
+[React](https://react.dev), [Vite](https://vite.dev), [Firebase](https://firebase.google.com) (optional shared cache) and [React Icons](https://react-icons.github.io/react-icons/).

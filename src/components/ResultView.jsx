@@ -81,7 +81,7 @@ function SignalScale({ score, signal }) {
   );
 }
 
-function ResultView({ entry, providerLabel, onRefresh, refreshing }) {
+function ResultView({ entry, providerLabel, onRefresh, refreshing, nextRefreshAt, shared }) {
   const r = entry.result;
   const tone = signalTone(r.Signal);
   const company = r.CompanyName && r.CompanyName !== r.Ticker ? r.CompanyName : null;
@@ -105,11 +105,17 @@ function ResultView({ entry, providerLabel, onRefresh, refreshing }) {
             <span title={new Date(entry.analyzedAt).toLocaleString()}>
               <HiOutlineClock aria-hidden="true" /> Analyzed {timeAgo(entry.analyzedAt)}
             </span>
-            {entry.fromCache && <span className="badge">From history</span>}
+            {entry.fromCache && <span className="badge">{shared ? 'Shared result' : 'From history'}</span>}
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onRefresh} disabled={refreshing}>
-            <HiOutlineRefresh aria-hidden="true" className={refreshing ? 'spin' : ''} /> Re-run analysis
-          </button>
+          {nextRefreshAt && Date.now() < nextRefreshAt ? (
+            <p className="result-refresh-note">
+              Results are shared for 30 minutes. Fresh data in {Math.max(1, Math.ceil((nextRefreshAt - Date.now()) / 60000))}m.
+            </p>
+          ) : (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onRefresh} disabled={refreshing}>
+              <HiOutlineRefresh aria-hidden="true" className={refreshing ? 'spin' : ''} /> Re-run analysis
+            </button>
+          )}
         </div>
         <ScoreGauge score={r.Score} tone={tone} label={r.Signal} />
       </section>

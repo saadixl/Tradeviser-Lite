@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { HiOutlineSearch, HiArrowRight, HiOutlineExclamationCircle, HiOutlineKey } from 'react-icons/hi';
 import { PROVIDERS, PROVIDER_MASSIVE, loadApiKey, maskApiKey } from '../data/providers';
 import { loadHistory, addToHistory, removeFromHistory, clearHistory, historyId } from '../data/history';
+import { sharedEnabled, getCachedAnalysis, saveAnalysis, subscribeRecent, isFresh, tickerKey, FRESH_MS } from '../data/sharedAnalyses';
 import { ANALYSIS_STEPS, parseTickerFromInput, runPlaygroundAnalysis } from '../utils/playgroundSignals';
 import AnalysisProgress from '../components/AnalysisProgress';
 import ResultView from '../components/ResultView';
@@ -23,7 +24,8 @@ const providerLabel = (value) => PROVIDERS.find((p) => p.value === value)?.label
 function AnalyzeStock() {
   const [tickerInput, setTickerInput] = useState('');
   const [provider, setProvider] = useState(loadProviderPref);
-  const [history, setHistory] = useState(loadHistory);
+  // Recent: the 20 latest shared analyses when the shared cache is on, otherwise this browser's history.
+  const [history, setHistory] = useState(() => (sharedEnabled ? [] : loadHistory()));
   const [current, setCurrent] = useState(null); // { id, ticker, provider, analyzedAt, result, fromCache }
   const [run, setRun] = useState(null); // { ticker, provider, step }
   const [error, setError] = useState(null);
@@ -32,6 +34,8 @@ function AnalyzeStock() {
 
   const apiKey = loadApiKey(provider);
   const running = Boolean(run);
+
+  useEffect(() => (sharedEnabled ? subscribeRecent(setHistory) : undefined), []);
 
   useEffect(() => {
     try {
@@ -61,13 +65,27 @@ function AnalyzeStock() {
       inputRef.current?.focus();
       return;
     }
+    const id = ++runId.current;
+    setError(null);
+
+    // A shared result 30 minutes old or less is reused (no API key needed).
+    if (sharedEnabled) {
+      setRun({ ticker, provider: prov, step: 0, checkingCache: true });
+      const cached = await getCachedAnalysis(ticker);
+      if (runId.current !== id) return;
+      if (isFresh(cached)) {
+        setRun(null);
+        setCurrent({ ...cached, fromCache: true });
+        return;
+      }
+    }
+
     const key = loadApiKey(prov);
     if (!key) {
+      setRun(null);
       setError({ message: `Add your ${providerLabel(prov)} API key in Settings to run an analysis.`, needsKey: true });
       return;
     }
-    const id = ++runId.current;
-    setError(null);
     setRun({ ticker, provider: prov, step: 0 });
     try {
       const result = await runPlaygroundAnalysis(ticker, 'US', prov, key, (step) => {
@@ -75,8 +93,13 @@ function AnalyzeStock() {
       });
       if (runId.current !== id) return;
       const entry = { ticker, provider: prov, analyzedAt: Date.now(), result };
-      setHistory((h) => addToHistory(h, entry));
-      setCurrent({ ...entry, id: historyId(ticker, prov), fromCache: false });
+      if (sharedEnabled) {
+        saveAnalysis(entry); // the Recent list updates from the database
+        setCurrent({ ...entry, id: tickerKey(ticker), fromCache: false });
+      } else {
+        setHistory((h) => addToHistory(h, entry));
+        setCurrent({ ...entry, id: historyId(ticker, prov), fromCache: false });
+      }
     } catch (e) {
       if (runId.current === id) setError({ message: e.message || 'Analysis failed. Please try again.' });
     } finally {
@@ -205,7 +228,8 @@ function AnalyzeStock() {
               ticker={run.ticker}
               providerLabel={providerLabel(run.provider)}
               steps={steps}
-              current={run.step}
+              current={run.checkingCache ? -1 : run.step}
+              checking={Boolean(run.checkingCache)}
             />
           ) : current ? (
             <ResultView
@@ -213,6 +237,8 @@ function AnalyzeStock() {
               providerLabel={providerLabel(current.provider)}
               refreshing={running}
               onRefresh={() => analyze(current.ticker, current.provider)}
+              nextRefreshAt={sharedEnabled ? current.analyzedAt + FRESH_MS : null}
+              shared={sharedEnabled}
             />
           ) : (
             !error && (
@@ -248,6 +274,7 @@ function AnalyzeStock() {
           activeId={current?.id}
           providerLabel={providerLabel}
           onSelect={openFromHistory}
+          readOnly={sharedEnabled}
           onRemove={remove}
           onClear={() => {
             setHistory(clearHistory());

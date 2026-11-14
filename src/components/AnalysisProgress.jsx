@@ -1,8 +1,8 @@
 import { HiCheck } from 'react-icons/hi';
 
 /** Live checklist of the data being fetched, with a progress bar across the top. */
-function AnalysisProgress({ ticker, providerLabel, steps, current }) {
-  const pct = Math.min(100, Math.round(((current + 0.5) / steps.length) * 100));
+function AnalysisProgress({ ticker, providerLabel, steps, current, checking }) {
+  const pct = checking ? 4 : Math.min(100, Math.round(((current + 0.5) / steps.length) * 100));
   return (
     <section className="card progress-card" aria-live="polite" aria-busy="true">
       <div className="progress-bar" aria-hidden="true">
@@ -10,10 +10,10 @@ function AnalysisProgress({ ticker, providerLabel, steps, current }) {
       </div>
       <div className="progress-head">
         <div>
-          <p className="eyebrow">Analyzing with {providerLabel}</p>
+          <p className="eyebrow">{checking ? 'Checking recent analyses' : `Analyzing with ${providerLabel}`}</p>
           <h2 className="progress-ticker mono">{ticker}</h2>
         </div>
-        <span className="progress-pct mono">{pct}%</span>
+        {checking ? <span className="spinner" aria-label="Checking" /> : <span className="progress-pct mono">{pct}%</span>}
       </div>
       <ol className="progress-steps">
         {steps.map((label, i) => {
