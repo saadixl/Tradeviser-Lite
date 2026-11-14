@@ -2,7 +2,7 @@
   "name": "tradeviser-lite",
   "version": "0.1.0",
   "private": true,
-  "description": "Stock signal playground: RSI, moving averages, analyst targets and news sentiment combined into one score, calculated in your browser.",
+  "description": "Analyze a stock: RSI, moving averages, analyst targets and news sentiment combined into one score, calculated in your browser.",
   "type": "module",
   "scripts": {
     "dev": "vite",

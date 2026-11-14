@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import './App.css';
-import Playground from './pages/Playground';
+import AnalyzeStock from './pages/AnalyzeStock';
 import Settings from './pages/Settings';
 
 const PAGES = [
-  { hash: '#/', label: 'Playground', Component: Playground },
+  { hash: '#/', label: 'Analyze a stock', Component: AnalyzeStock },
   { hash: '#/settings', label: 'Settings', Component: Settings },
 ];
 

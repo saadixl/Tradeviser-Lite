@@ -70,7 +70,7 @@ function healthKeyForColumn(colKey) {
   return map[colKey] || null;
 }
 
-function Playground() {
+function AnalyzeStock() {
   const [tickerInput, setTickerInput] = useState('');
   const [apiProvider, setApiProvider] = useState(PROVIDER_MASSIVE);
   const provider = PROVIDERS.find((p) => p.value === apiProvider) || PROVIDERS[0];
@@ -122,7 +122,7 @@ function Playground() {
           <div className="playground-title-row">
             <h1 className="analysis-title">
               <HiOutlineLightningBolt className="analysis-header-icon" aria-hidden />
-              Playground
+              Analyze a stock
             </h1>
             <p className="playground-lead">
               Stock signals from Massive or Alpha Vantage data, calculated in your browser with your own API key.
@@ -255,4 +255,4 @@ function Playground() {
   );
 }
 
-export default Playground;
+export default AnalyzeStock;

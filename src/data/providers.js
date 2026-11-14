@@ -1,4 +1,4 @@
-/** Market data providers the Playground can use. Each user brings their own API key. */
+/** Market data providers used to analyze a stock. Each user brings their own API key. */
 export const PROVIDER_MASSIVE = 'massive';
 export const PROVIDER_ALPHAVANTAGE = 'alphavantage';
 

@@ -1,4 +1,4 @@
-/* Styles for the Tradeviser Lite shell and Playground (from Tradeviser Web's dark UI). */
+/* Styles for the Tradeviser Lite shell, Analyze a stock and Settings pages (from Tradeviser Web's dark UI). */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 .App {
@@ -613,7 +613,7 @@
   color: var(--text-primary);
 }
 
-/* Playground: which saved key will be used */
+/* Analyze a stock: which saved key will be used */
 .playground-key-status {
   display: flex;
   flex-wrap: wrap;
