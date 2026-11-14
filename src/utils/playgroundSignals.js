@@ -102,13 +102,14 @@ function latestIndicatorValue(payload) {
   return parseFloatSafe(latest.value);
 }
 
-export async function getMassiveCombinedSignals(ticker, exchange = 'US', apiKey = '') {
+export async function getMassiveCombinedSignals(ticker, exchange = 'US', apiKey = '', onProgress = () => {}) {
   if (!apiKey) throw new Error('Add your Massive API key in Settings to run an analysis.');
 
   const symbol = formatSymbol(ticker, exchange);
   let score = 0;
   const seg = pathTicker(symbol);
 
+  onProgress(0);
   const rsiPayload = await massiveSafe(
     `/v1/indicators/rsi/${seg}`,
     { timespan: 'day', window: 14, series_type: 'close', limit: 10, order: 'desc' },
@@ -120,6 +121,7 @@ export async function getMassiveCombinedSignals(ticker, exchange = 'US', apiKey 
     else if (rsi > 70) score += (70 - rsi) / 30;
   }
 
+  onProgress(1);
   const sma50Payload = await massiveSafe(
     `/v1/indicators/sma/${seg}`,
     { timespan: 'day', window: 50, series_type: 'close', limit: 10, order: 'desc' },
@@ -127,6 +129,7 @@ export async function getMassiveCombinedSignals(ticker, exchange = 'US', apiKey 
   );
   const sma50 = sma50Payload ? latestIndicatorValue(sma50Payload) : null;
 
+  onProgress(2);
   const sma200Payload = await massiveSafe(
     `/v1/indicators/sma/${seg}`,
     { timespan: 'day', window: 200, series_type: 'close', limit: 10, order: 'desc' },
@@ -143,6 +146,7 @@ export async function getMassiveCombinedSignals(ticker, exchange = 'US', apiKey 
   fromD.setDate(fromD.getDate() - 550);
   const fromStr = fromD.toISOString().slice(0, 10);
   const toStr = toD.toISOString().slice(0, 10);
+  onProgress(3);
   const aggs = await massiveSafe(
     `/v2/aggs/ticker/${seg}/range/1/day/${fromStr}/${toStr}`,
     { adjusted: 'true', sort: 'desc', limit: 500 },
@@ -186,6 +190,7 @@ export async function getMassiveCombinedSignals(ticker, exchange = 'US', apiKey 
   }
 
   let companyName = symbol;
+  onProgress(4);
   const ref = await massiveSafe(`/v3/reference/tickers/${seg}`, {}, apiKey);
   if (ref && ref.results && typeof ref.results === 'object' && ref.results.name) {
     companyName = ref.results.name;
@@ -193,6 +198,7 @@ export async function getMassiveCombinedSignals(ticker, exchange = 'US', apiKey 
 
   let peRatio = null;
   let eps = null;
+  onProgress(5);
   const ratios = await massiveSafe('/stocks/financials/v1/ratios', { ticker: symbol, limit: 1, sort: 'date.desc' }, apiKey);
   if (ratios && Array.isArray(ratios.results) && ratios.results[0]) {
     const row = ratios.results[0];
@@ -201,6 +207,7 @@ export async function getMassiveCombinedSignals(ticker, exchange = 'US', apiKey 
   }
 
   let analystTarget = null;
+  onProgress(6);
   const ins = await massiveSafe('/benzinga/v1/analyst-insights', { ticker: symbol, limit: 15, sort: 'last_updated.desc' }, apiKey);
   if (ins && Array.isArray(ins.results)) {
     for (const row of ins.results) {
@@ -226,6 +233,7 @@ export async function getMassiveCombinedSignals(ticker, exchange = 'US', apiKey 
 
   let marketSentiment = null;
   let sentimentScore = null;
+  onProgress(7);
   const news = await massiveSafe('/v2/reference/news', { ticker: symbol, limit: 50, sort: 'published_utc', order: 'desc' }, apiKey);
   if (news && Array.isArray(news.results)) {
     const scores = [];
@@ -373,7 +381,7 @@ function avLatest(series) {
   return [dates[0], series[dates[0]]];
 }
 
-export async function getAlphavantageCombinedSignals(ticker, exchange = 'US', apiKey = '') {
+export async function getAlphavantageCombinedSignals(ticker, exchange = 'US', apiKey = '', onProgress = () => {}) {
   if (!apiKey) throw new Error('Add your Alpha Vantage API key in Settings to run an analysis.');
 
   const symbol = formatSymbol(ticker, exchange);
@@ -381,6 +389,7 @@ export async function getAlphavantageCombinedSignals(ticker, exchange = 'US', ap
 
   let rsi = null;
   try {
+    onProgress(0);
     const rsiData = await avRequest(
       { function: 'RSI', symbol, interval: 'daily', time_period: 14, series_type: 'close' },
       apiKey
@@ -400,6 +409,7 @@ export async function getAlphavantageCombinedSignals(ticker, exchange = 'US', ap
 
   let sma50 = null;
   try {
+    onProgress(1);
     const sma50Data = await avRequest(
       { function: 'SMA', symbol, interval: 'daily', time_period: 50, series_type: 'close' },
       apiKey
@@ -413,6 +423,7 @@ export async function getAlphavantageCombinedSignals(ticker, exchange = 'US', ap
 
   let sma200 = null;
   try {
+    onProgress(2);
     const sma200Data = await avRequest(
       { function: 'SMA', symbol, interval: 'daily', time_period: 200, series_type: 'close' },
       apiKey
@@ -427,6 +438,7 @@ export async function getAlphavantageCombinedSignals(ticker, exchange = 'US', ap
   let entries = [];
   let lastRow = {};
   try {
+    onProgress(3);
     const dailyData = await avRequest({ function: 'TIME_SERIES_DAILY', symbol, outputsize: 'compact' }, apiKey);
     const dailySeries = avGetSeries(dailyData, 'Time Series (Daily)', 'Time Series (Daily) (Compact)');
     entries = Object.entries(dailySeries).sort((a, b) => b[0].localeCompare(a[0]));
@@ -478,6 +490,7 @@ export async function getAlphavantageCombinedSignals(ticker, exchange = 'US', ap
   let analystTarget = null;
   let companyName = symbol;
   try {
+    onProgress(4);
     const overviewData = await avRequest({ function: 'OVERVIEW', symbol }, apiKey);
     peRatio = parseFloatSafe(overviewData.PERatio);
     eps = parseFloatSafe(overviewData.EPS);
@@ -502,6 +515,7 @@ export async function getAlphavantageCombinedSignals(ticker, exchange = 'US', ap
   let marketSentiment = null;
   let sentimentScore = null;
   try {
+    onProgress(5);
     const newsData = await avRequest({ function: 'NEWS_SENTIMENT', tickers: symbol, limit: 50 }, apiKey);
     if (newsData.feed && Array.isArray(newsData.feed)) {
       const scores = [];
@@ -615,16 +629,23 @@ export async function getAlphavantageCombinedSignals(ticker, exchange = 'US', ap
   };
 }
 
+/** The data each provider fetches, in order; onProgress(i) fires as step i starts. */
+export const ANALYSIS_STEPS = {
+  massive: ['Momentum (RSI)', '50-day average', '200-day average', 'Price history', 'Company profile', 'Fundamentals', 'Analyst targets', 'News sentiment'],
+  alphavantage: ['Momentum (RSI)', '50-day average', '200-day average', 'Price history', 'Company profile & fundamentals', 'News sentiment'],
+};
+
 /**
  * @param {string} ticker
  * @param {string} exchange
  * @param {'massive'|'alphavantage'} provider
  * @param {string} apiKey  The user's key for the chosen provider.
+ * @param {(step: number) => void} [onProgress]  Called with the index of each step in ANALYSIS_STEPS as it starts.
  */
-export async function runPlaygroundAnalysis(ticker, exchange, provider, apiKey) {
+export async function runPlaygroundAnalysis(ticker, exchange, provider, apiKey, onProgress) {
   const p = (provider || 'massive').toLowerCase();
-  if (p === 'alphavantage') return getAlphavantageCombinedSignals(ticker, exchange, apiKey);
-  return getMassiveCombinedSignals(ticker, exchange, apiKey);
+  if (p === 'alphavantage') return getAlphavantageCombinedSignals(ticker, exchange, apiKey, onProgress);
+  return getMassiveCombinedSignals(ticker, exchange, apiKey, onProgress);
 }
 
 export function parseTickerFromInput(raw) {

@@ -1,255 +1,259 @@
-import { useState, useMemo } from 'react';
-import {
-  HiOutlineLightningBolt,
-  HiOutlineSearch,
-  HiOutlineChevronDown,
-  HiOutlineKey,
-} from 'react-icons/hi';
-import ScrollToTop from '../components/ScrollToTop';
+import { useEffect, useRef, useState } from 'react';
+import { HiOutlineSearch, HiArrowRight, HiOutlineExclamationCircle, HiOutlineKey } from 'react-icons/hi';
 import { PROVIDERS, PROVIDER_MASSIVE, loadApiKey, maskApiKey } from '../data/providers';
-import { parseTickerFromInput, runPlaygroundAnalysis } from '../utils/playgroundSignals';
+import { loadHistory, addToHistory, removeFromHistory, clearHistory, historyId } from '../data/history';
+import { ANALYSIS_STEPS, parseTickerFromInput, runPlaygroundAnalysis } from '../utils/playgroundSignals';
+import AnalysisProgress from '../components/AnalysisProgress';
+import ResultView from '../components/ResultView';
+import HistoryList from '../components/HistoryList';
 
-const PLAYGROUND_COLUMNS = [
-  { key: 'Ticker', label: 'Ticker' },
-  { key: 'CompanyName', label: 'Company' },
-  { key: 'Score', label: 'Tradeviser Score' },
-  { key: 'Signal', label: 'Tradeviser Signal' },
-  { key: 'Price', label: 'Price' },
-  { key: 'PERatio', label: 'P/E' },
-  { key: 'EPS', label: 'EPS' },
-  { key: 'RSI', label: 'RSI' },
-  { key: 'SMA50', label: 'SMA50' },
-  { key: 'SMA200', label: 'SMA200' },
-  { key: 'SupportLevel', label: 'Support' },
-  { key: 'ResistanceLevel', label: 'Resistance' },
-  { key: 'AnalystRating', label: 'Analyst' },
-  { key: 'Trend', label: 'Trend' },
-  { key: 'MarketSentiment', label: 'Sentiment' },
-  { key: 'TradingVolume', label: 'Volume' },
-];
+const PROVIDER_PREF_KEY = 'tradeviser-lite:provider';
 
-function formatVolume(num) {
-  if (num == null || num === '') return '—';
-  const n = Number(num);
-  if (Number.isNaN(n)) return '—';
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return String(n);
+function loadProviderPref() {
+  try {
+    const v = localStorage.getItem(PROVIDER_PREF_KEY);
+    return PROVIDERS.some((p) => p.value === v) ? v : PROVIDER_MASSIVE;
+  } catch {
+    return PROVIDER_MASSIVE;
+  }
 }
 
-function healthClass(health) {
-  if (!health || typeof health !== 'string') return '';
-  const h = health.toLowerCase();
-  if (h === 'good') return 'analysis-health-good';
-  if (h === 'bad') return 'analysis-health-bad';
-  return 'analysis-health-neutral';
-}
-
-function cellValue(row, col) {
-  const v = row[col.key];
-  if (v == null || v === '') return '—';
-  if (col.key === 'TradingVolume') return formatVolume(v);
-  if (typeof v === 'number' && col.key !== 'Score') return String(v);
-  return String(v);
-}
-
-function healthKeyForColumn(colKey) {
-  const map = {
-    RSI: 'RSIHealth',
-    SMA50: 'SMA50Health',
-    SMA200: 'SMA200Health',
-    Trend: 'TrendHealth',
-    MarketSentiment: 'SentimentHealth',
-    AnalystRating: 'AnalystHealth',
-    PERatio: 'PERatioHealth',
-    EPS: 'EPSHealth',
-    SupportLevel: 'SupportHealth',
-    ResistanceLevel: 'ResistanceHealth',
-    TradingVolume: 'TradingVolumeHealth',
-  };
-  return map[colKey] || null;
-}
+const providerLabel = (value) => PROVIDERS.find((p) => p.value === value)?.label || value;
 
 function AnalyzeStock() {
   const [tickerInput, setTickerInput] = useState('');
-  const [apiProvider, setApiProvider] = useState(PROVIDER_MASSIVE);
-  const provider = PROVIDERS.find((p) => p.value === apiProvider) || PROVIDERS[0];
-  const apiKey = loadApiKey(apiProvider);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState(null);
-  const [analysisError, setAnalysisError] = useState(null);
+  const [provider, setProvider] = useState(loadProviderPref);
+  const [history, setHistory] = useState(loadHistory);
+  const [current, setCurrent] = useState(null); // { id, ticker, provider, analyzedAt, result, fromCache }
+  const [run, setRun] = useState(null); // { ticker, provider, step }
+  const [error, setError] = useState(null);
+  const inputRef = useRef(null);
+  const runId = useRef(0);
 
-  const handleAnalyze = async () => {
-    const ticker = parseTickerFromInput(tickerInput);
+  const apiKey = loadApiKey(provider);
+  const running = Boolean(run);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROVIDER_PREF_KEY, provider);
+    } catch {
+      /* ignore */
+    }
+  }, [provider]);
+
+  // "/" focuses the search, like a command bar.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      e.preventDefault();
+      inputRef.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const analyze = async (rawTicker = tickerInput, prov = provider) => {
+    const ticker = parseTickerFromInput(rawTicker);
     if (!ticker) {
-      setAnalysisError('Enter a ticker symbol.');
-      setResult(null);
+      setError({ message: 'Enter a ticker symbol, for example AAPL.' });
+      inputRef.current?.focus();
       return;
     }
-    setAnalysisError(null);
-    setResult(null);
-    setAnalyzing(true);
+    const key = loadApiKey(prov);
+    if (!key) {
+      setError({ message: `Add your ${providerLabel(prov)} API key in Settings to run an analysis.`, needsKey: true });
+      return;
+    }
+    const id = ++runId.current;
+    setError(null);
+    setRun({ ticker, provider: prov, step: 0 });
     try {
-      const data = await runPlaygroundAnalysis(ticker, 'US', apiProvider, apiKey);
-      setResult(data);
+      const result = await runPlaygroundAnalysis(ticker, 'US', prov, key, (step) => {
+        if (runId.current === id) setRun((r) => (r ? { ...r, step } : r));
+      });
+      if (runId.current !== id) return;
+      const entry = { ticker, provider: prov, analyzedAt: Date.now(), result };
+      setHistory((h) => addToHistory(h, entry));
+      setCurrent({ ...entry, id: historyId(ticker, prov), fromCache: false });
     } catch (e) {
-      setAnalysisError(e.message || 'Analysis failed');
+      if (runId.current === id) setError({ message: e.message || 'Analysis failed. Please try again.' });
     } finally {
-      setAnalyzing(false);
+      if (runId.current === id) setRun(null);
     }
   };
 
-  const onFormKeyDown = (e) => {
-    if (e.key !== 'Enter' || analyzing) return;
-    if (e.target?.id !== 'playground-ticker-input') return;
+  const onSubmit = (e) => {
     e.preventDefault();
-    handleAnalyze();
+    if (!running) analyze();
   };
 
-  const signalClass = useMemo(() => {
-    if (!result?.Signal) return '';
-    const s = result.Signal;
-    if (s.includes('BUY')) return 'playground-signal playground-signal--buy';
-    if (s.includes('SELL')) return 'playground-signal playground-signal--sell';
-    return 'playground-signal playground-signal--hold';
-  }, [result]);
+  const openFromHistory = (entry) => {
+    runId.current += 1; // cancel any run in progress
+    setRun(null);
+    setError(null);
+    setCurrent({ ...entry, fromCache: true });
+    setTickerInput(entry.ticker);
+    setProvider(entry.provider);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const remove = (id) => {
+    setHistory((h) => removeFromHistory(h, id));
+    if (current?.id === id) setCurrent(null);
+  };
+
+  const steps = run ? ANALYSIS_STEPS[run.provider] : [];
 
   return (
-    <div className="analysis-page-wrap">
-      <ScrollToTop />
-      <div className="analysis-page playground-page">
-        <header className="analysis-header playground-header">
-          <div className="playground-title-row">
-            <h1 className="analysis-title">
-              <HiOutlineLightningBolt className="analysis-header-icon" aria-hidden />
-              Analyze a stock
-            </h1>
-            <p className="playground-lead">
-              Stock signals from Massive or Alpha Vantage data, calculated in your browser with your own API key.
-            </p>
-          </div>
-        </header>
+    <div className="page analyze">
+      <header className="hero">
+        <p className="eyebrow eyebrow-accent">Stock signals, in your browser</p>
+        <h1 className="hero-title">
+          Analyze a stock <span className="hero-title-soft">in seconds.</span>
+        </h1>
+        <p className="hero-lead">
+          Momentum, moving averages, analyst targets and news sentiment, distilled into one score from 0 to 100.
+        </p>
+      </header>
 
-        <section className="playground-panel" onKeyDown={onFormKeyDown}>
-          <div className="playground-panel-head">
-            <h2 className="playground-panel-title">Run analysis</h2>
-          </div>
+      <form className="search" onSubmit={onSubmit} role="search">
+        <div className="search-field">
+          <HiOutlineSearch className="search-icon" aria-hidden="true" />
+          <label htmlFor="ticker" className="sr-only">Ticker symbol</label>
+          <input
+            id="ticker"
+            ref={inputRef}
+            className="search-input mono"
+            value={tickerInput}
+            onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === 'Escape' && setTickerInput('')}
+            placeholder="Ticker, e.g. NVDA"
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck="false"
+            enterKeyHint="go"
+          />
+          {!tickerInput && <kbd className="kbd" aria-hidden="true">/</kbd>}
+        </div>
 
-          <div className="playground-form">
-            <div className="playground-col">
-              <label className="playground-field-label" htmlFor="playground-ticker-input">
-                Ticker
-              </label>
-              <div className="playground-combo">
-                <HiOutlineSearch className="playground-combo-icon" aria-hidden />
-                <input
-                  id="playground-ticker-input"
-                  type="text"
-                  className="playground-combo-input"
-                  value={tickerInput}
-                  onChange={(e) => setTickerInput(e.target.value)}
-                  placeholder="Type a symbol, e.g. AAPL"
-                  autoComplete="off"
-                  spellCheck="false"
-                  aria-describedby="playground-ticker-hint"
-                />
-              </div>
-              <p id="playground-ticker-hint" className="playground-field-hint">
-                US equities. Enter any ticker symbol.
-              </p>
-            </div>
-
-            <div className="playground-col">
-              <label className="playground-field-label" htmlFor="playground-api-select">
-                Data API
-              </label>
-              <div className="playground-select-wrap">
-                <select
-                  id="playground-api-select"
-                  className="playground-select"
-                  value={apiProvider}
-                  onChange={(e) => setApiProvider(e.target.value)}
-                  disabled={analyzing}
-                >
-                  {PROVIDERS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <HiOutlineChevronDown className="playground-select-chevron" aria-hidden />
-              </div>
-              <p className="playground-field-hint playground-field-hint--placeholder" aria-hidden="true">
-                {'\u00a0'}
-              </p>
-            </div>
-
-            <div className="playground-col playground-col--action">
-              <span className="playground-field-label playground-field-label--spacer" aria-hidden="true">
-                Ticker
-              </span>
+        <div className="segmented" role="radiogroup" aria-label="Data provider">
+          {PROVIDERS.map((p) => {
+            const hasKey = Boolean(loadApiKey(p.value));
+            return (
               <button
+                key={p.value}
                 type="button"
-                className="btn btn-primary playground-analyze-btn"
-                onClick={handleAnalyze}
-                disabled={analyzing}
+                role="radio"
+                aria-checked={provider === p.value}
+                className={`segmented-btn${provider === p.value ? ' is-active' : ''}`}
+                onClick={() => setProvider(p.value)}
+                disabled={running}
+                title={hasKey ? `${p.label} key saved` : `No ${p.label} key yet`}
               >
-                {analyzing ? 'Analyzing…' : 'Analyze'}
+                <span className={`key-dot${hasKey ? ' has-key' : ''}`} aria-hidden="true" />
+                {p.label}
               </button>
-              <p className="playground-field-hint playground-field-hint--kbd">Press Enter to run</p>
-            </div>
-          </div>
+            );
+          })}
+        </div>
 
-          <p className="playground-key-status">
-            <HiOutlineKey className="playground-key-status-icon" aria-hidden />
-            {apiKey ? (
-              <>
-                Using your {provider.label} key <span className="settings-key-mask">{maskApiKey(apiKey)}</span>
-                {' · '}
-                <a href="#/settings">Change in Settings</a>
-              </>
-            ) : (
-              <>
-                No {provider.label} API key yet. <a href="#/settings">Add one in Settings</a> to run an analysis.
-              </>
-            )}
-          </p>
-
-          {analysisError && (
-            <p className="playground-alert playground-alert--error" role="alert">
-              {analysisError}
-            </p>
+        <button type="submit" className="btn btn-primary search-go" disabled={running}>
+          {running ? (
+            <>
+              <span className="spinner spinner-light" aria-hidden="true" /> Analyzing
+            </>
+          ) : (
+            <>
+              Analyze <HiArrowRight aria-hidden="true" />
+            </>
           )}
-        </section>
+        </button>
+      </form>
 
-        {result && (
-          <section className="playground-result">
-            <div className="playground-result-head">
-              <h2 className="playground-result-title">Result</h2>
-              {result.CompanyName && result.CompanyName !== result.Ticker && (
-                <span className="playground-result-sub">{result.CompanyName}</span>
+      <p className="key-line">
+        <HiOutlineKey aria-hidden="true" />
+        {apiKey ? (
+          <>
+            Using your {providerLabel(provider)} key <span className="mono key-mask">{maskApiKey(apiKey)}</span>
+            <a href="#/settings">Manage</a>
+          </>
+        ) : (
+          <>
+            No {providerLabel(provider)} key yet. <a href="#/settings">Add one in Settings</a>
+          </>
+        )}
+      </p>
+
+      <div className="analyze-layout">
+        <div className="analyze-main">
+          {error && (
+            <div className="card alert" role="alert">
+              <HiOutlineExclamationCircle aria-hidden="true" />
+              <span>{error.message}</span>
+              {error.needsKey && (
+                <a className="btn btn-primary btn-sm" href="#/settings">
+                  Open Settings
+                </a>
               )}
             </div>
-            <div className={`playground-signal-wrap ${signalClass}`}>
-              <span className="playground-signal-label">Signal</span>
-              <span className="playground-signal-value">{result.Signal}</span>
-              <span className="playground-score">Score {result.Score ?? '—'}</span>
-            </div>
-            <div className="playground-metrics">
-              {PLAYGROUND_COLUMNS.map((col) => {
-                const hk = healthKeyForColumn(col.key);
-                const health = hk ? result[hk] : null;
-                const extra = hk ? healthClass(health) : '';
-                return (
-                  <div key={col.key} className={`playground-metric ${extra}`}>
-                    <span className="playground-metric-label">{col.label}</span>
-                    <span className="playground-metric-value">{cellValue(result, col)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
+          )}
+
+          {run ? (
+            <AnalysisProgress
+              ticker={run.ticker}
+              providerLabel={providerLabel(run.provider)}
+              steps={steps}
+              current={run.step}
+            />
+          ) : current ? (
+            <ResultView
+              entry={current}
+              providerLabel={providerLabel(current.provider)}
+              refreshing={running}
+              onRefresh={() => analyze(current.ticker, current.provider)}
+            />
+          ) : (
+            !error && (
+              <div className="card empty">
+                <div className="empty-art" aria-hidden="true">
+                  <svg viewBox="0 0 120 64">
+                    <defs>
+                      <linearGradient id="empty-line" x1="0" x2="1">
+                        <stop offset="0" stopColor="#6366f1" />
+                        <stop offset="1" stopColor="#22d3ee" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M4 52 L28 40 L44 46 L64 22 L82 30 L104 10 L116 14" fill="none" stroke="url(#empty-line)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <h2 className="empty-title">Start with a ticker</h2>
+                <p className="empty-text">
+                  Type a US ticker above and press Enter. Each analysis checks up to eight data points and
+                  lands in your recent list.
+                </p>
+                <div className="empty-tags">
+                  {['RSI', 'SMA 50/200', 'Trend', 'Support & resistance', 'P/E & EPS', 'Analyst targets', 'News sentiment'].map((t, i) => (
+                    <span key={t} className="tag" style={{ '--i': i }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            )
+          )}
+        </div>
+
+        <HistoryList
+          entries={history}
+          activeId={current?.id}
+          providerLabel={providerLabel}
+          onSelect={openFromHistory}
+          onRemove={remove}
+          onClear={() => {
+            setHistory(clearHistory());
+            setCurrent(null);
+          }}
+        />
       </div>
     </div>
   );

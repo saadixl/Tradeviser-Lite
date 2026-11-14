@@ -6,6 +6,17 @@ key for [Massive](https://massive.com) or [Alpha Vantage](https://www.alphavanta
 
 > For information and education only. This is not financial advice.
 
+## Features
+
+- **One score, one signal:** an animated 0–100 gauge and a STRONG SELL → STRONG BUY scale.
+- **Live progress:** see each data point being fetched (RSI, moving averages, price history,
+  fundamentals, analyst targets, news sentiment) while the analysis runs.
+- **Readable results:** metrics grouped into technicals, price levels and fundamentals, each marked
+  positive, neutral or negative, with RSI zones and the price's place in its 20-day range.
+- **Recent analyses:** every result is cached in your browser. Reopen any past ticker instantly,
+  re-run it for fresh data, or remove it. On phones the list becomes a swipeable strip.
+- **Keyboard friendly:** press `/` to jump to the search, Enter to analyze, Esc to clear.
+
 ## What it looks at
 
 | Metric | How it affects the score |
