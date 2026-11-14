@@ -57,6 +57,16 @@ npm run preview    # serve the production build
 `dist/` is a static site, so it can be hosted anywhere that serves static files (GitHub Pages,
 Netlify, Vercel, Firebase Hosting, and so on).
 
+### Deploy to Firebase Hosting
+
+`firebase.json` deploys `dist/` to a Hosting site named `tradeviser-lite`. To deploy your own
+copy, change `site` in `firebase.json` to a site in your Firebase project, pick the project with
+`firebase use --add` (this writes `.firebaserc`, which is git-ignored), then run:
+
+```bash
+npm run deploy     # build + firebase deploy --only hosting
+```
+
 ## Built with
 
 [React](https://react.dev), [Vite](https://vite.dev) and [React Icons](https://react-icons.github.io/react-icons/).
