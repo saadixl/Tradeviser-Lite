@@ -32,9 +32,10 @@ each marked good, neutral or bad. The logic lives in
 
 ## Your API key
 
-Tradeviser Lite has no server. You paste your own key into the app; it's saved only in your
-browser's local storage and sent only to the provider you picked. Keys never go into the code
-or the build, so the app is safe to host publicly.
+Tradeviser Lite has no server. Add your key under **Settings**; it's saved only in your
+browser's local storage and sent only to that provider. Once saved, a key is only ever shown as
+its last 4 characters (`•••• WXYZ`), and you can replace or remove it there. Keys never go into
+the code or the build, so the app is safe to host publicly.
 
 - **Massive:** sign up at [massive.com](https://massive.com). Analyst targets and news sentiment
   need a plan that includes those datasets.

@@ -6,7 +6,7 @@ import {
   HiOutlineKey,
 } from 'react-icons/hi';
 import ScrollToTop from '../components/ScrollToTop';
-import { PROVIDERS, PROVIDER_MASSIVE, loadApiKey, saveApiKey } from '../data/providers';
+import { PROVIDERS, PROVIDER_MASSIVE, loadApiKey, maskApiKey } from '../data/providers';
 import { parseTickerFromInput, runPlaygroundAnalysis } from '../utils/playgroundSignals';
 
 const PLAYGROUND_COLUMNS = [
@@ -73,21 +73,11 @@ function healthKeyForColumn(colKey) {
 function Playground() {
   const [tickerInput, setTickerInput] = useState('');
   const [apiProvider, setApiProvider] = useState(PROVIDER_MASSIVE);
-  const [apiKey, setApiKey] = useState(() => loadApiKey(PROVIDER_MASSIVE));
   const provider = PROVIDERS.find((p) => p.value === apiProvider) || PROVIDERS[0];
+  const apiKey = loadApiKey(apiProvider);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [analysisError, setAnalysisError] = useState(null);
-
-  const changeProvider = (value) => {
-    setApiProvider(value);
-    setApiKey(loadApiKey(value));
-  };
-
-  const changeApiKey = (value) => {
-    setApiKey(value);
-    saveApiKey(apiProvider, value.trim());
-  };
 
   const handleAnalyze = async () => {
     const ticker = parseTickerFromInput(tickerInput);
@@ -100,7 +90,7 @@ function Playground() {
     setResult(null);
     setAnalyzing(true);
     try {
-      const data = await runPlaygroundAnalysis(ticker, 'US', apiProvider, apiKey.trim());
+      const data = await runPlaygroundAnalysis(ticker, 'US', apiProvider, apiKey);
       setResult(data);
     } catch (e) {
       setAnalysisError(e.message || 'Analysis failed');
@@ -111,7 +101,7 @@ function Playground() {
 
   const onFormKeyDown = (e) => {
     if (e.key !== 'Enter' || analyzing) return;
-    if (e.target?.id !== 'playground-ticker-input' && e.target?.id !== 'playground-api-key') return;
+    if (e.target?.id !== 'playground-ticker-input') return;
     e.preventDefault();
     handleAnalyze();
   };
@@ -178,7 +168,7 @@ function Playground() {
                   id="playground-api-select"
                   className="playground-select"
                   value={apiProvider}
-                  onChange={(e) => changeProvider(e.target.value)}
+                  onChange={(e) => setApiProvider(e.target.value)}
                   disabled={analyzing}
                 >
                   {PROVIDERS.map((o) => (
@@ -210,31 +200,20 @@ function Playground() {
             </div>
           </div>
 
-          <div className="playground-key">
-            <label className="playground-field-label" htmlFor="playground-api-key">
-              {provider.label} API key
-            </label>
-            <div className="playground-combo">
-              <HiOutlineKey className="playground-combo-icon" aria-hidden />
-              <input
-                id="playground-api-key"
-                type="password"
-                className="playground-combo-input"
-                value={apiKey}
-                onChange={(e) => changeApiKey(e.target.value)}
-                placeholder={`Paste your ${provider.label} API key`}
-                autoComplete="off"
-                spellCheck="false"
-                aria-describedby="playground-api-key-hint"
-              />
-            </div>
-            <p id="playground-api-key-hint" className="playground-field-hint">
-              Saved only in this browser and sent only to {provider.label}.{' '}
-              <a href={provider.keyUrl} target="_blank" rel="noopener noreferrer">
-                Get a {provider.label} key
-              </a>
-            </p>
-          </div>
+          <p className="playground-key-status">
+            <HiOutlineKey className="playground-key-status-icon" aria-hidden />
+            {apiKey ? (
+              <>
+                Using your {provider.label} key <span className="settings-key-mask">{maskApiKey(apiKey)}</span>
+                {' · '}
+                <a href="#/settings">Change in Settings</a>
+              </>
+            ) : (
+              <>
+                No {provider.label} API key yet. <a href="#/settings">Add one in Settings</a> to run an analysis.
+              </>
+            )}
+          </p>
 
           {analysisError && (
             <p className="playground-alert playground-alert--error" role="alert">

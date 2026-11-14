@@ -103,7 +103,7 @@ function latestIndicatorValue(payload) {
 }
 
 export async function getMassiveCombinedSignals(ticker, exchange = 'US', apiKey = '') {
-  if (!apiKey) throw new Error('Add your Massive API key to run an analysis.');
+  if (!apiKey) throw new Error('Add your Massive API key in Settings to run an analysis.');
 
   const symbol = formatSymbol(ticker, exchange);
   let score = 0;
@@ -374,7 +374,7 @@ function avLatest(series) {
 }
 
 export async function getAlphavantageCombinedSignals(ticker, exchange = 'US', apiKey = '') {
-  if (!apiKey) throw new Error('Add your Alpha Vantage API key to run an analysis.');
+  if (!apiKey) throw new Error('Add your Alpha Vantage API key in Settings to run an analysis.');
 
   const symbol = formatSymbol(ticker, exchange);
   let score = 0;

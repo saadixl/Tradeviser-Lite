@@ -9,7 +9,7 @@ export const PROVIDERS = [
 
 const storageKey = (provider) => `tradeviser-lite:api-key:${provider}`;
 
-/** API keys live only in this browser's localStorage; they are never sent anywhere except the provider. */
+/** API keys live only in this browser's localStorage and are sent only to their provider. Never display a key in full: use maskApiKey(). */
 export function loadApiKey(provider) {
   try {
     return localStorage.getItem(storageKey(provider)) || '';
@@ -25,4 +25,10 @@ export function saveApiKey(provider, key) {
   } catch {
     /* storage unavailable (private mode): the key still works for this visit */
   }
+}
+
+/** Masked form for display: only the last 4 characters are ever shown. */
+export function maskApiKey(key) {
+  if (!key) return '';
+  return `•••• ${key.slice(-4)}`;
 }

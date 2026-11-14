@@ -561,12 +561,6 @@
 
 
 /* --- Tradeviser Lite additions ------------------------------------ */
-.playground-key {
-  display: flex;
-  flex-direction: column;
-  margin-top: 1.25rem;
-  max-width: 32rem;
-}
 
 .playground-field-hint a {
   color: var(--accent-hover);
@@ -590,5 +584,141 @@
 @media (max-width: 640px) {
   .app-main {
     padding: 1.25rem 1rem;
+  }
+}
+
+/* Header navigation */
+.app-nav {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.app-nav-link {
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.app-nav-link:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.app-nav-link--active {
+  background: var(--accent-glow);
+  color: var(--text-primary);
+}
+
+/* Playground: which saved key will be used */
+.playground-key-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.playground-key-status-icon {
+  color: var(--text-muted);
+}
+
+.playground-key-status a {
+  color: var(--accent-hover);
+  text-decoration: none;
+}
+
+.playground-key-status a:hover {
+  text-decoration: underline;
+}
+
+/* Settings */
+.btn-outline {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-outline:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: none;
+}
+
+.settings-card {
+  max-width: 40rem;
+}
+
+.settings-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.settings-key-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-success);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.settings-key-missing {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.settings-key-mask {
+  font-family: 'JetBrains Mono', Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.settings-key-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-key-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.settings-key-row .playground-combo {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-status {
+  color: var(--color-success);
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .settings-key-row {
+    flex-wrap: wrap;
+  }
+
+  .settings-key-row .playground-combo {
+    flex-basis: 100%;
   }
 }
