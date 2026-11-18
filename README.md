@@ -57,6 +57,22 @@ the code or the build, so the app is safe to host publicly.
   [alphavantage.co](https://www.alphavantage.co/support/#api-key). The free tier has a low daily
   request limit, and one analysis makes about 6 requests.
 
+### Keys in your Tradeviser account (optional)
+
+Under **Settings** you can sign in with your Tradeviser account (Google sign-in, same Firebase
+project as Tradeviser). Once signed in:
+
+- **Save to cloud** encrypts this browser's keys and stores them at `Users/<uid>/apiKeys/<provider>`
+  as `{ iv, data, updatedAt }`. Encryption is AES-GCM in the browser, with the AES key derived from
+  your uid (PBKDF2-SHA-256), so the plain key never leaves the browser except to its provider.
+- **Use keys from cloud** (a toggle, remembered per browser) makes analyses use the keys from your
+  account, decrypted in the browser and kept in memory only. A provider with no key in the cloud
+  falls back to this browser's key.
+
+The uid isn't secret, so the database rule is what keeps the keys private: only the signed-in owner
+can read or write `Users/<uid>/apiKeys` (see `database.rules.json` in Tradeviser-Web). The site's
+domain must be listed under Firebase Authentication → Settings → Authorized domains.
+
 ## Shared analysis cache (optional)
 
 With a Firebase Realtime Database configured, every analysis is saved at

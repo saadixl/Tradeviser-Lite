@@ -9,9 +9,7 @@
  * Optional: without the VITE_FIREBASE_* settings (.env.local) the app keeps history in the
  * browser only. The database rules (see README) allow public reads and validated writes only.
  */
-import { initializeApp } from 'firebase/app';
 import {
-  getDatabase,
   ref,
   get,
   set,
@@ -21,28 +19,11 @@ import {
   onValue,
   serverTimestamp,
 } from 'firebase/database';
+import { db } from './firebase';
 
 export const FRESH_MS = 30 * 60 * 1000;
 const ROOT = 'Tradeviser-Lite/Analysis';
 const RECENT_LIMIT = 20;
-
-const env = import.meta.env;
-const config = {
-  apiKey: env.VITE_FIREBASE_API_KEY,
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-  databaseURL: env.VITE_FIREBASE_DATABASE_URL,
-  projectId: env.VITE_FIREBASE_PROJECT_ID,
-  appId: env.VITE_FIREBASE_APP_ID,
-};
-
-let db = null;
-if (config.databaseURL && config.apiKey) {
-  try {
-    db = getDatabase(initializeApp(config));
-  } catch (e) {
-    console.warn('Shared analysis cache unavailable:', e);
-  }
-}
 
 export const sharedEnabled = Boolean(db);
 

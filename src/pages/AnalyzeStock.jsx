@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { HiOutlineSearch, HiArrowRight, HiOutlineExclamationCircle, HiOutlineKey } from 'react-icons/hi';
-import { PROVIDERS, PROVIDER_MASSIVE, loadApiKey, maskApiKey } from '../data/providers';
+import { PROVIDERS, PROVIDER_MASSIVE, maskApiKey } from '../data/providers';
+import { useAccount, activeApiKey } from '../data/account';
 import { loadHistory, addToHistory, removeFromHistory, clearHistory, historyId } from '../data/history';
 import { sharedEnabled, getCachedAnalysis, saveAnalysis, subscribeRecent, isFresh, tickerKey, FRESH_MS } from '../data/sharedAnalyses';
 import { ANALYSIS_STEPS, parseTickerFromInput, runPlaygroundAnalysis } from '../utils/playgroundSignals';
@@ -32,7 +33,8 @@ function AnalyzeStock() {
   const inputRef = useRef(null);
   const runId = useRef(0);
 
-  const apiKey = loadApiKey(provider);
+  const account = useAccount();
+  const { key: apiKey, source: keySource } = activeApiKey(provider, account);
   const running = Boolean(run);
 
   useEffect(() => (sharedEnabled ? subscribeRecent(setHistory) : undefined), []);
@@ -80,7 +82,7 @@ function AnalyzeStock() {
       }
     }
 
-    const key = loadApiKey(prov);
+    const { key } = activeApiKey(prov);
     if (!key) {
       setRun(null);
       setError({ message: `Add your ${providerLabel(prov)} API key in Settings to run an analysis.`, needsKey: true });
@@ -163,7 +165,7 @@ function AnalyzeStock() {
 
         <div className="segmented" role="radiogroup" aria-label="Data provider">
           {PROVIDERS.map((p) => {
-            const hasKey = Boolean(loadApiKey(p.value));
+            const hasKey = Boolean(activeApiKey(p.value, account).key);
             return (
               <button
                 key={p.value}
@@ -199,7 +201,7 @@ function AnalyzeStock() {
         <HiOutlineKey aria-hidden="true" />
         {apiKey ? (
           <>
-            Using your {providerLabel(provider)} key <span className="mono key-mask">{maskApiKey(apiKey)}</span>
+            Using your {providerLabel(provider)} key{keySource === 'cloud' ? ' from the cloud' : ''} <span className="mono key-mask">{maskApiKey(apiKey)}</span>
             <a href="#/settings">Manage</a>
           </>
         ) : (

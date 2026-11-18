@@ -8,14 +8,29 @@ export const PROVIDERS = [
 ];
 
 const storageKey = (provider) => `tradeviser-lite:api-key:${provider}`;
+const listeners = new Set();
 
-/** API keys live only in this browser's localStorage and are sent only to their provider. Never display a key in full: use maskApiKey(). */
+/** Called whenever a key in this browser is saved or removed. Returns unsubscribe. */
+export function onLocalKeysChange(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+/**
+ * This browser's API keys live in localStorage and are sent only to their provider (or, if the
+ * user chooses, encrypted to their account: see cloudKeys.js). Never display a key in full: use
+ * maskApiKey(). To get the key an analysis should use, use useApiKey() from account.js.
+ */
 export function loadApiKey(provider) {
   try {
     return localStorage.getItem(storageKey(provider)) || '';
   } catch {
     return '';
   }
+}
+
+export function loadAllApiKeys() {
+  return Object.fromEntries(PROVIDERS.map((p) => [p.value, loadApiKey(p.value)]));
 }
 
 export function saveApiKey(provider, key) {
@@ -25,6 +40,7 @@ export function saveApiKey(provider, key) {
   } catch {
     /* storage unavailable (private mode): the key still works for this visit */
   }
+  listeners.forEach((fn) => fn());
 }
 
 /** Masked form for display: only the last 4 characters are ever shown. */
